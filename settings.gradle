@@ -1,0 +1,12 @@
+rootProject.name = "TrajectoryPlanner"
+include 'src:main:test'
+findProject(':src:main:test')?.name = 'test'
+include 'src:main:tests'
+findProject(':src:main:tests')?.name = 'tests'
+include 'src:test'
+findProject(':src:test')?.name = 'test'
+include 'src:test'
+findProject(':src:test')?.name = 'test'
+include 'src:test'
+findProject(':src:test')?.name = 'test'
+
