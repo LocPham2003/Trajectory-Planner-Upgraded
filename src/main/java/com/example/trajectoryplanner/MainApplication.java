@@ -73,23 +73,20 @@ public class MainApplication extends Application {
 
     private void visualizeTrajectory() {
         // Visualize trajectory on the canvas
-        // TODO: List of points need to be sorted
-
         // Clear the previous trajectory
         canvas.getChildren().clear();
 
         ArrayList<Point> listOfPoints = mainController.getListOfPoints();
-        System.out.println(listOfPoints);
         if (listOfPoints.size() >= 2) {
             Point[] boundaryPoints = new Point[]{listOfPoints.get(0), listOfPoints.get(listOfPoints.size() - 1)};
             int currIndex = 0;
 
-            for (double i = boundaryPoints[0].getX(); i <= boundaryPoints[1].getX() - 0.1; i += 0.1) {
+            for (double i = boundaryPoints[0].getX(); i <= boundaryPoints[1].getX() - 0.1; i += 0.01) {
                 if (Math.abs(i - listOfPoints.get(currIndex + 1).getX()) <= 0.00000001) {
                     currIndex++;
                 }
-                canvas.getChildren().add(new Line(i, generatedTrajectories.get(currIndex).getFuncOutput(i),
-                        i + 0.1, generatedTrajectories.get(currIndex).getFuncOutput(i + 0.1)));
+                canvas.getChildren().add(new Line(i, generatedTrajectories.get(currIndex).getFuncOutput(i) - 25,
+                        i + 0.1, generatedTrajectories.get(currIndex).getFuncOutput(i + 0.1) - 25));
             }
         }
     }
@@ -126,7 +123,7 @@ public class MainApplication extends Application {
         // Generate the scene
         BorderPane root = new BorderPane();
 
-        mainScene = new Scene(root, 1000, 800);
+        mainScene = new Scene(root, 800, 800);
         // Generate scene's assets
         sceneMenuBar = createMenuBar();
         root.setTop(sceneMenuBar);
@@ -142,6 +139,7 @@ public class MainApplication extends Application {
 
         // Show scene
         stage.setScene(mainScene);
+        stage.setResizable(false);
         stage.show();
 
 

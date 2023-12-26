@@ -1,6 +1,8 @@
 package com.example.trajectoryplanner;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 
 public class TrajectoryGenerator {
     private final ArrayList<Point> listOfPoints;

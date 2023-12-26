@@ -1,12 +1,13 @@
 package com.example.trajectoryplanner;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 
 public class MainController {
     ArrayList<Point> listOfPoints = new ArrayList<>();
     public void addPoint(Point point) {
-        System.out.println("Point added");
         listOfPoints.add(point);
+        this.listOfPoints.sort(Comparator.comparingDouble(Point::getX));
     }
 
     public ArrayList<Point> getListOfPoints() {

@@ -1,6 +1,6 @@
 package com.example.trajectoryplanner;
 
-public class Point implements Comparable<Point> {
+public class Point {
     private final double x;
     private final double y;
 
@@ -15,15 +15,5 @@ public class Point implements Comparable<Point> {
 
     public double getY() {
         return y;
-    }
-
-    @Override
-    public int compareTo(Point comparePoint) {
-        double comparePointX = comparePoint.getX();
-        return compare(this.x, comparePointX);
-    }
-
-    public static int compare(double x, double compX) {
-        return Double.compare(x, compX);
     }
 }
