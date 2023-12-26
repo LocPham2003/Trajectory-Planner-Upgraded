@@ -10,6 +10,10 @@ public class MainController {
         this.listOfPoints.sort(Comparator.comparingDouble(Point::getX));
     }
 
+    public void removePoint(Point point) {
+        this.listOfPoints.remove(point);
+    }
+
     public ArrayList<Point> getListOfPoints() {
         return this.listOfPoints;
     }

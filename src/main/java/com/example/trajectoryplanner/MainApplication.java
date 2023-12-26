@@ -1,7 +1,9 @@
 package com.example.trajectoryplanner;
 
 import javafx.application.Application;
+import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
@@ -14,9 +16,11 @@ import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
 import java.util.ArrayList;
-import java.util.Collections;
 
 public class MainApplication extends Application {
+    // Control variables
+    private boolean isSelected = false;
+
     // Main UI components
     Pane canvas;
     MenuBar sceneMenuBar;
@@ -24,6 +28,8 @@ public class MainApplication extends Application {
 
     MainController mainController = new MainController();
     ArrayList<Trajectory> generatedTrajectories = new ArrayList<>();
+    ArrayList<Circle> controlPointsUI = new ArrayList<>();
+    ArrayList<Circle> selectedControlPointsUI = new ArrayList<>();
     public MenuBar createMenuBar() {
         // TO-DO: Generate this dynamically by reading from JSON.
         MenuBar menuBar = new MenuBar();
@@ -33,7 +39,7 @@ public class MainApplication extends Application {
         Menu solveMenu = new Menu("Solve");
 
         String[] fileMenuOptions = new String[]{"New", "Save"};
-        String[] editMenuOptions = new String[]{"Cut", "Copy", "Paste"};
+        String[] editMenuOptions = new String[]{"Select", "Delete", "Shift"};
         String[] solveMenuOptions = new String[]{"Cubic Splines", "Bezier"};
 
         for (String fileMenuOption : fileMenuOptions) {
@@ -43,7 +49,12 @@ public class MainApplication extends Application {
         }
 
         for (String editMenuOption : editMenuOptions) {
-            MenuItem editMenuItem = new MenuItem(editMenuOption);
+            MenuItem editMenuItem;
+            if (editMenuOption.equals("Select")) {
+                editMenuItem = new CheckMenuItem(editMenuOption);
+            } else {
+                editMenuItem = new MenuItem(editMenuOption);
+            }
             editMenuItem.setId(editMenuOption);
             editMenu.getItems().add(editMenuItem);
         }
@@ -58,12 +69,43 @@ public class MainApplication extends Application {
         return menuBar;
     }
 
-    public void getControlPoints() {
+    public void pointManipulation() {
         mainScene.setOnMouseClicked(event -> {
-            drawPoint(event.getSceneX(), event.getSceneY());
-            System.out.println(event.getScreenX() + " " + event.getSceneY());
-            mainController.addPoint(new Point(event.getSceneX(), event.getSceneY()));
+            if (!this.isSelected) {
+                drawPoint(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT);
+                mainController.addPoint(new Point(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT));
+            } else {
+                for (Circle point : controlPointsUI) {
+                    // Check which point is intersecting with the mouse cursor
+                    if (Math.pow(event.getSceneX() - point.getCenterX(), 2) +
+                            Math.pow(event.getSceneY() - Constants.CURSOR_SHIFT - point.getCenterY(), 2) <= Math.pow(Constants.CONTROL_POINTS_RADIUS, 2)) {
+                        point.setFill(Color.RED);
+                        selectedControlPointsUI.add(point);
+                        break;
+                    }
+                }
+            }
         });
+    }
+
+    private void deselectPoints() {
+        for (Circle point : controlPointsUI) {
+            point.setFill(Constants.CONTROL_POINTS_COLOR);
+        }
+    }
+
+    // this shit not working lol
+    private void deletePoints() {
+        for (Circle pointUI : selectedControlPointsUI) {
+            for (Point point : mainController.getListOfPoints()) {
+                if (pointUI.getCenterX() == point.getX() && pointUI.getCenterY() == point.getY()) {
+                    mainController.removePoint(point);
+                    break;
+                }
+            }
+        }
+
+        visualizeTrajectory();
     }
 
     private Pane createCanvas(Scene scene) {
@@ -71,28 +113,39 @@ public class MainApplication extends Application {
         return new Pane(box);
     }
 
+    private void cleanCanvas() {
+        canvas.getChildren().clear();
+        this.controlPointsUI.clear();
+    }
+
     private void visualizeTrajectory() {
         // Visualize trajectory on the canvas
         // Clear the previous trajectory
-        canvas.getChildren().clear();
+        cleanCanvas();
 
         ArrayList<Point> listOfPoints = mainController.getListOfPoints();
         if (listOfPoints.size() >= 2) {
             Point[] boundaryPoints = new Point[]{listOfPoints.get(0), listOfPoints.get(listOfPoints.size() - 1)};
             int currIndex = 0;
+            // Draw the boundary point
+            drawPoint(boundaryPoints[0].getX(), generatedTrajectories.get(currIndex).getFuncOutput(boundaryPoints[0].getX()));
+            drawPoint(boundaryPoints[1].getX(), generatedTrajectories.get(generatedTrajectories.size() - 1).getFuncOutput(boundaryPoints[1].getX()));
 
             for (double i = boundaryPoints[0].getX(); i <= boundaryPoints[1].getX() - 0.1; i += 0.01) {
                 if (Math.abs(i - listOfPoints.get(currIndex + 1).getX()) <= 0.00000001) {
                     currIndex++;
+                    drawPoint(i, generatedTrajectories.get(currIndex).getFuncOutput(i));
                 }
-                canvas.getChildren().add(new Line(i, generatedTrajectories.get(currIndex).getFuncOutput(i) - 25,
-                        i + 0.1, generatedTrajectories.get(currIndex).getFuncOutput(i + 0.1) - 25));
+                canvas.getChildren().add(new Line(i, generatedTrajectories.get(currIndex).getFuncOutput(i),
+                        i + 0.1, generatedTrajectories.get(currIndex).getFuncOutput(i + 0.1)));
             }
         }
     }
 
     private void drawPoint(double x, double y) {
-        canvas.getChildren().add(new Circle(x, y - 25, 2, Color.BLACK));
+        Circle pointUI = new Circle(x, y, Constants.CONTROL_POINTS_RADIUS, Constants.CONTROL_POINTS_COLOR);
+        canvas.getChildren().add(pointUI);
+        this.controlPointsUI.add(pointUI);
     }
 
     public void menuBarEventHandler(MenuBar menuBar) {
@@ -101,16 +154,27 @@ public class MainApplication extends Application {
                 menuItem.setOnAction(event -> {
                     System.out.println(menuItem.getId());
                     switch(menuItem.getId()) {
+                        case "Select":
+                            CheckMenuItem selectMode = (CheckMenuItem) menuItem;
+                            this.isSelected = selectMode.isSelected();
+                            if (!this.isSelected) {
+                                deselectPoints();
+                            }
+                            break;
+                        case "Delete":
+                            deletePoints();
+                            break;
                         case "Cubic Splines":
                             generatedTrajectories = mainController.interpolate(0);
+                            visualizeTrajectory();
                             break;
                         case "Bezier":
                             generatedTrajectories = mainController.interpolate(1);
+                            visualizeTrajectory();
                             break;
                         default:
                             break;
                     }
-                    visualizeTrajectory();
                 });
 
             }
@@ -123,7 +187,7 @@ public class MainApplication extends Application {
         // Generate the scene
         BorderPane root = new BorderPane();
 
-        mainScene = new Scene(root, 800, 800);
+        mainScene = new Scene(root);
         // Generate scene's assets
         sceneMenuBar = createMenuBar();
         root.setTop(sceneMenuBar);
@@ -134,15 +198,13 @@ public class MainApplication extends Application {
         root.setCenter(canvas);
 
         // Assign event handlers to relevant graphic nodes
-        getControlPoints();
+        pointManipulation();
         menuBarEventHandler(sceneMenuBar);
 
         // Show scene
         stage.setScene(mainScene);
-        stage.setResizable(false);
+        stage.setMaximized(true);
         stage.show();
-
-
     }
 
     public static void main(String[] args) {
