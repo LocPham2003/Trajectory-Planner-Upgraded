@@ -186,8 +186,8 @@ public class TrajectoryGenerator {
     }
 
     // Allow control of the trajectory curvature with a bezier curve control points  (reference: https://javascript.info/bezier-curve)
-    public void solveBezier(ArrayList<Point> listOfPoints) {
-        // The number of points will determine the degree of the function
+    public ArrayList<Trajectory> generateBezierTrajectories(ArrayList<Point> listOfPoints) {
+        return this.trajectories;
     }
 
     // Fit a list of points with a cubic spline

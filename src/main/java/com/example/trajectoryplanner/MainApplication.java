@@ -1,18 +1,29 @@
 package com.example.trajectoryplanner;
 
 import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 
-import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 
 public class MainApplication extends Application {
+    // Main UI components
+    Pane canvas;
+    MenuBar sceneMenuBar;
+    Scene mainScene;
+
     MainController mainController = new MainController();
+    ArrayList<Trajectory> generatedTrajectories = new ArrayList<>();
     public MenuBar createMenuBar() {
         // TO-DO: Generate this dynamically by reading from JSON.
         MenuBar menuBar = new MenuBar();
@@ -47,8 +58,44 @@ public class MainApplication extends Application {
         return menuBar;
     }
 
-    public void getControlPoints(Scene scene) {
-        scene.setOnMouseClicked(event -> mainController.addPoint(new Point(event.getSceneX(), event.getSceneY())));
+    public void getControlPoints() {
+        mainScene.setOnMouseClicked(event -> {
+            drawPoint(event.getSceneX(), event.getSceneY());
+            System.out.println(event.getScreenX() + " " + event.getSceneY());
+            mainController.addPoint(new Point(event.getSceneX(), event.getSceneY()));
+        });
+    }
+
+    private Pane createCanvas(Scene scene) {
+        Rectangle box = new Rectangle(scene.getWidth(), scene.getHeight(), Color.WHITE);
+        return new Pane(box);
+    }
+
+    private void visualizeTrajectory() {
+        // Visualize trajectory on the canvas
+        // TODO: List of points need to be sorted
+
+        // Clear the previous trajectory
+        canvas.getChildren().clear();
+
+        ArrayList<Point> listOfPoints = mainController.getListOfPoints();
+        System.out.println(listOfPoints);
+        if (listOfPoints.size() >= 2) {
+            Point[] boundaryPoints = new Point[]{listOfPoints.get(0), listOfPoints.get(listOfPoints.size() - 1)};
+            int currIndex = 0;
+
+            for (double i = boundaryPoints[0].getX(); i <= boundaryPoints[1].getX() - 0.1; i += 0.1) {
+                if (Math.abs(i - listOfPoints.get(currIndex + 1).getX()) <= 0.00000001) {
+                    currIndex++;
+                }
+                canvas.getChildren().add(new Line(i, generatedTrajectories.get(currIndex).getFuncOutput(i),
+                        i + 0.1, generatedTrajectories.get(currIndex).getFuncOutput(i + 0.1)));
+            }
+        }
+    }
+
+    private void drawPoint(double x, double y) {
+        canvas.getChildren().add(new Circle(x, y - 25, 2, Color.BLACK));
     }
 
     public void menuBarEventHandler(MenuBar menuBar) {
@@ -58,16 +105,17 @@ public class MainApplication extends Application {
                     System.out.println(menuItem.getId());
                     switch(menuItem.getId()) {
                         case "Cubic Splines":
-                            System.out.println("Cubic Spline Selected");
-                            mainController.interpolate(0);
+                            generatedTrajectories = mainController.interpolate(0);
                             break;
                         case "Bezier":
-                            System.out.println("Bezier lmao");
+                            generatedTrajectories = mainController.interpolate(1);
                             break;
                         default:
                             break;
                     }
+                    visualizeTrajectory();
                 });
+
             }
         }
     }
@@ -77,19 +125,23 @@ public class MainApplication extends Application {
         System.out.println("Generating the scene");
         // Generate the scene
         BorderPane root = new BorderPane();
-        Scene scene = new Scene(root, 1000, 800);
 
+        mainScene = new Scene(root, 1000, 800);
         // Generate scene's assets
-        MenuBar sceneMenuBar = createMenuBar();
+        sceneMenuBar = createMenuBar();
         root.setTop(sceneMenuBar);
         stage.setTitle("Trajectory planner - by Loc Pham");
 
+        // Generate a canvas for visualization
+        canvas = createCanvas(mainScene);
+        root.setCenter(canvas);
+
         // Assign event handlers to relevant graphic nodes
-        getControlPoints(scene);
+        getControlPoints();
         menuBarEventHandler(sceneMenuBar);
 
         // Show scene
-        stage.setScene(scene);
+        stage.setScene(mainScene);
         stage.show();
 
 

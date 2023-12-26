@@ -9,13 +9,17 @@ public class MainController {
         listOfPoints.add(point);
     }
 
-    public void interpolate(int option) {
+    public ArrayList<Point> getListOfPoints() {
+        return this.listOfPoints;
+    }
+
+    public ArrayList<Trajectory> interpolate(int option) {
         TrajectoryGenerator trajectoryGenerator = new TrajectoryGenerator(listOfPoints);
         if (option == 0) {
             System.out.println("Solving cubic spline");
-            ArrayList<Trajectory> trajectories = trajectoryGenerator.generateCubicSplineTrajectories();
+            return trajectoryGenerator.generateCubicSplineTrajectories();
         } else {
-            trajectoryGenerator.solveBezier(listOfPoints);
+            return trajectoryGenerator.generateBezierTrajectories(listOfPoints);
         }
     }
 }
