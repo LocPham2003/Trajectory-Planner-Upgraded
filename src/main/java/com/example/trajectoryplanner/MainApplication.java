@@ -25,7 +25,7 @@ public class MainApplication extends Application {
     MenuBar sceneMenuBar;
     Scene mainScene;
 
-    MainController mainController = new MainController();
+    MainController mainController;
     ArrayList<Trajectory> generatedTrajectories = new ArrayList<>();
     ArrayList<Circle> controlPointsUI = new ArrayList<>();
     ArrayList<Circle> selectedControlPointsUI = new ArrayList<>();
@@ -70,6 +70,7 @@ public class MainApplication extends Application {
 
     public void pointManipulation() {
         mainScene.setOnMouseClicked(event -> {
+            System.out.println(event.getScreenX() + " " + event.getSceneY());
             if (!this.isSelected) {
                 drawPoint(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT);
                 mainController.addPoint(new Point(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT));
@@ -96,8 +97,8 @@ public class MainApplication extends Application {
     private void deletePoints() {
         for (Circle pointUI : selectedControlPointsUI) {
             for (Point point : mainController.getListOfPoints()) {
-                if (Math.abs(pointUI.getCenterX() - point.getX()) <= Constants.COORDINATE_DIFF &&
-                        Math.abs(pointUI.getCenterY() - point.getY()) <= Constants.COORDINATE_DIFF) {
+                if (Math.abs(pointUI.getCenterX() - point.getX()) <= Constants.COORDINATE_FLOAT_DIFF &&
+                        Math.abs(pointUI.getCenterY() - point.getY()) <= Constants.COORDINATE_FLOAT_DIFF) {
                     mainController.removePoint(point);
                     break;
                 }
@@ -205,6 +206,11 @@ public class MainApplication extends Application {
         stage.setScene(mainScene);
         stage.setMaximized(true);
         stage.show();
+
+        // Update boundary
+        System.out.println(canvas.getBoundsInLocal());
+        mainController = new MainController(canvas.getBoundsInLocal());
+
     }
 
     public static void main(String[] args) {

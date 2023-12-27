@@ -6,12 +6,14 @@ import java.util.Comparator;
 
 public class TrajectoryGenerator {
     private final ArrayList<Point> listOfPoints;
+    private final double[] verticalBoundaries;
     private ArrayList<Trajectory> trajectories;
     private double[][] coefMat;
     private int lastUpdatedRow = 0;
     private int lastUpdatedCol = 0;
     private int rightHandSideIndex = 0;
-    public TrajectoryGenerator(ArrayList<Point> listOfPoints) {
+    public TrajectoryGenerator(ArrayList<Point> listOfPoints, double[] verticalBoundaries) {
+        this.verticalBoundaries = verticalBoundaries;
         this.listOfPoints = listOfPoints;
         this.trajectories = new ArrayList<>();
     }
@@ -185,10 +187,39 @@ public class TrajectoryGenerator {
                     this.coefMat[i * 4 + 2][this.rightHandSideIndex],
                     this.coefMat[i * 4 + 3][this.rightHandSideIndex]));
         }
+
+        // Check if the spline is going out of bounds, then generate a straight line
+        int pointIndex = 0;
+        for (Trajectory trajectory : this.trajectories) {
+            double[] coef = trajectory.getCoefficients();
+            double[] coefDerivative = new double[]{coef[1], 2 * coef[2], 3 * coef[3]};
+
+            double delta = Math.pow(coefDerivative[1], 2) - (4 * coefDerivative[0] * coefDerivative[2]);
+
+            if (Math.sqrt(delta) > 0) {
+                double firstSol = (-coefDerivative[1] - Math.sqrt(delta)) / (2 * coefDerivative[2]);
+                double secondSol = (-coefDerivative[1] + Math.sqrt(delta)) / (2 * coefDerivative[2]);
+                if (trajectory.getFuncOutput(firstSol) < verticalBoundaries[0] ||
+                        trajectory.getFuncOutput(secondSol) < verticalBoundaries[0] ||
+                        trajectory.getFuncOutput(firstSol) > verticalBoundaries[1] ||
+                        trajectory.getFuncOutput(secondSol) > verticalBoundaries[1]) {
+
+                    Point currPoint = this.listOfPoints.get(pointIndex);
+                    Point nextPoint = this.listOfPoints.get(pointIndex + 1);
+
+                    double slope = (nextPoint.getY() - currPoint.getY()) /
+                            (nextPoint.getX() - currPoint.getX());
+                    double intercept = nextPoint.getY() - slope * nextPoint.getX();
+
+                    trajectory.setCoefficient(intercept, slope, 0, 0);
+                }
+            }
+            pointIndex++;
+        }
     }
 
     // Allow control of the trajectory curvature with a bezier curve control points  (reference: https://javascript.info/bezier-curve)
-    public ArrayList<Trajectory> generateBezierTrajectories(ArrayList<Point> listOfPoints) {
+    public ArrayList<Trajectory> generateBezierTrajectories() {
         return this.trajectories;
     }
 
