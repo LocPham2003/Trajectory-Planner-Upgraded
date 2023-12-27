@@ -93,7 +93,6 @@ public class MainApplication extends Application {
         }
     }
 
-    // this shit not working lol
     private void deletePoints() {
         for (Circle pointUI : selectedControlPointsUI) {
             for (Point point : mainController.getListOfPoints()) {
