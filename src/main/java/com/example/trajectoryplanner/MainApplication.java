@@ -1,7 +1,6 @@
 package com.example.trajectoryplanner;
 
 import javafx.application.Application;
-import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.CheckMenuItem;
 import javafx.scene.control.Menu;
@@ -98,13 +97,15 @@ public class MainApplication extends Application {
     private void deletePoints() {
         for (Circle pointUI : selectedControlPointsUI) {
             for (Point point : mainController.getListOfPoints()) {
-                if (pointUI.getCenterX() == point.getX() && pointUI.getCenterY() == point.getY()) {
+                if (Math.abs(pointUI.getCenterX() - point.getX()) <= Constants.COORDINATE_DIFF &&
+                        Math.abs(pointUI.getCenterY() - point.getY()) <= Constants.COORDINATE_DIFF) {
                     mainController.removePoint(point);
                     break;
                 }
             }
         }
-
+        // Update the trajectories
+        this.generatedTrajectories = mainController.interpolate(mainController.getCurrSplineType());
         visualizeTrajectory();
     }
 

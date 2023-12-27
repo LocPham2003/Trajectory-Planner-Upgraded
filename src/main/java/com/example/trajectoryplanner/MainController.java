@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 
 public class MainController {
+    private int splineType = 0;
     ArrayList<Point> listOfPoints = new ArrayList<>();
     public void addPoint(Point point) {
         listOfPoints.add(point);
@@ -14,13 +15,18 @@ public class MainController {
         this.listOfPoints.remove(point);
     }
 
+    public int getCurrSplineType() {
+        return this.splineType;
+    }
+
     public ArrayList<Point> getListOfPoints() {
         return this.listOfPoints;
     }
 
-    public ArrayList<Trajectory> interpolate(int option) {
+    public ArrayList<Trajectory> interpolate(int splineType) {
+        this.splineType = splineType;
         TrajectoryGenerator trajectoryGenerator = new TrajectoryGenerator(listOfPoints);
-        if (option == 0) {
+        if (splineType == 0) {
             System.out.println("Solving cubic spline");
             return trajectoryGenerator.generateCubicSplineTrajectories();
         } else {
