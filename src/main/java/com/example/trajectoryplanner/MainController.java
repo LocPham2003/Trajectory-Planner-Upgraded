@@ -7,12 +7,11 @@ import java.util.Comparator;
 
 public class MainController {
     private int splineType = 0;
-    private double[] verticalBoundaries = new double[2];
+    private double[] verticalBoundaries;
     ArrayList<Point> listOfPoints = new ArrayList<>();
 
-    public MainController(Bounds bounds) {
-        verticalBoundaries[0] = bounds.getMinY() + Constants.MENU_BAR_SHIFT;
-        verticalBoundaries[1] = bounds.getMaxY();
+    public MainController(double[] verticalBoundaries) {
+        this.verticalBoundaries = verticalBoundaries;
     }
 
     public void addPoint(Point point) {

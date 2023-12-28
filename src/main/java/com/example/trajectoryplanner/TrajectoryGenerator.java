@@ -188,9 +188,10 @@ public class TrajectoryGenerator {
                     this.coefMat[i * 4 + 3][this.rightHandSideIndex]));
         }
 
-        // Check if the spline is going out of bounds, then generate a straight line
+        // Point index to find out which 2 points the current trajectory is connecting.
         int pointIndex = 0;
         for (Trajectory trajectory : this.trajectories) {
+            // Check if the spline is going out of bounds, then generate a straight line
             double[] coef = trajectory.getCoefficients();
             double[] coefDerivative = new double[]{coef[1], 2 * coef[2], 3 * coef[3]};
 

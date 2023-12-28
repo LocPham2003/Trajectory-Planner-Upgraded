@@ -19,6 +19,7 @@ import java.util.ArrayList;
 public class MainApplication extends Application {
     // Control variables
     private boolean isSelected = false;
+    private double[] verticalBoundaries = new double[2];
 
     // Main UI components
     Pane canvas;
@@ -72,14 +73,16 @@ public class MainApplication extends Application {
         mainScene.setOnMouseClicked(event -> {
             System.out.println(event.getScreenX() + " " + event.getSceneY());
             if (!this.isSelected) {
-                drawPoint(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT);
-                mainController.addPoint(new Point(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT));
+                if (event.getSceneY() > verticalBoundaries[0] && event.getSceneY() < verticalBoundaries[1]) {
+                    drawPoint(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT);
+                    mainController.addPoint(new Point(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT));
+                }
             } else {
                 for (Circle point : controlPointsUI) {
                     // Check which point is intersecting with the mouse cursor
                     if (Math.pow(event.getSceneX() - point.getCenterX(), 2) +
                             Math.pow(event.getSceneY() - Constants.CURSOR_SHIFT - point.getCenterY(), 2) <= Math.pow(Constants.CONTROL_POINTS_RADIUS, 2)) {
-                        point.setFill(Color.RED);
+                        point.setFill(Constants.CONTROL_POINTS_SELECTED_COLOR);
                         selectedControlPointsUI.add(point);
                         break;
                     }
@@ -95,18 +98,22 @@ public class MainApplication extends Application {
     }
 
     private void deletePoints() {
-        for (Circle pointUI : selectedControlPointsUI) {
-            for (Point point : mainController.getListOfPoints()) {
-                if (Math.abs(pointUI.getCenterX() - point.getX()) <= Constants.COORDINATE_FLOAT_DIFF &&
-                        Math.abs(pointUI.getCenterY() - point.getY()) <= Constants.COORDINATE_FLOAT_DIFF) {
-                    mainController.removePoint(point);
-                    break;
+        if (!selectedControlPointsUI.isEmpty()) {
+            for (Circle pointUI : selectedControlPointsUI) {
+                for (Point point : mainController.getListOfPoints()) {
+                    if (Math.abs(pointUI.getCenterX() - point.getX()) <= Constants.COORDINATE_FLOAT_DIFF &&
+                            Math.abs(pointUI.getCenterY() - point.getY()) <= Constants.COORDINATE_FLOAT_DIFF) {
+                        mainController.removePoint(point);
+                        break;
+                    }
                 }
             }
+
+            selectedControlPointsUI.clear();
+            // Update the trajectories
+            this.generatedTrajectories = mainController.interpolate(mainController.getCurrSplineType());
+            visualizeTrajectory();
         }
-        // Update the trajectories
-        this.generatedTrajectories = mainController.interpolate(mainController.getCurrSplineType());
-        visualizeTrajectory();
     }
 
     private Pane createCanvas(Scene scene) {
@@ -208,8 +215,9 @@ public class MainApplication extends Application {
         stage.show();
 
         // Update boundary
-        System.out.println(canvas.getBoundsInLocal());
-        mainController = new MainController(canvas.getBoundsInLocal());
+        this.verticalBoundaries[0] = canvas.getLayoutBounds().getMinY() + Constants.MENU_BAR_SHIFT;
+        this.verticalBoundaries[1] = canvas.getLayoutBounds().getMaxY();
+        mainController = new MainController(this.verticalBoundaries);
 
     }
 
