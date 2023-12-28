@@ -11,4 +11,6 @@ public class Constants {
     public static final double CONTROL_POINTS_RADIUS = 8.0;
     public static final Paint CONTROL_POINTS_COLOR = Color.BLUE;
     public static final Paint CONTROL_POINTS_SELECTED_COLOR = Color.RED;
+    public static final Paint CONTROL_POINTS_BEZIER_COLOR = Color.ORANGE;
+    public static final Paint POINT_DRAG_COLOR = Color.GREEN;
 }

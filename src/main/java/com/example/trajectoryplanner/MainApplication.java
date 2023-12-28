@@ -19,6 +19,8 @@ import java.util.ArrayList;
 public class MainApplication extends Application {
     // Control variables
     private boolean isSelected = false;
+    private boolean isShifted = false;
+    private boolean isBezier = false;
     private double[] verticalBoundaries = new double[2];
 
     // Main UI components
@@ -30,6 +32,9 @@ public class MainApplication extends Application {
     ArrayList<Trajectory> generatedTrajectories = new ArrayList<>();
     ArrayList<Circle> controlPointsUI = new ArrayList<>();
     ArrayList<Circle> selectedControlPointsUI = new ArrayList<>();
+    ArrayList<Circle> selectedBezierSegments = new ArrayList<>();
+    Circle pointDragUI; // The UI element of the point that is being dragged.
+    Point pointDrag; // The mathematical object of the point that is being dragged.
     public MenuBar createMenuBar() {
         // TO-DO: Generate this dynamically by reading from JSON.
         MenuBar menuBar = new MenuBar();
@@ -39,8 +44,8 @@ public class MainApplication extends Application {
         Menu solveMenu = new Menu("Solve");
 
         String[] fileMenuOptions = new String[]{"New", "Save"};
-        String[] editMenuOptions = new String[]{"Select", "Delete", "Shift"};
-        String[] solveMenuOptions = new String[]{"Cubic Splines", "Bezier"};
+        String[] editMenuOptions = new String[]{"Select", "Delete", "Shift", "Bezier"};
+        String[] solveMenuOptions = new String[]{"Cubic Splines", "Bezier - 1 control point", "Bezier - 2 control points"};
 
         for (String fileMenuOption : fileMenuOptions) {
             MenuItem fileMenuItem = new MenuItem(fileMenuOption);
@@ -50,7 +55,7 @@ public class MainApplication extends Application {
 
         for (String editMenuOption : editMenuOptions) {
             MenuItem editMenuItem;
-            if (editMenuOption.equals("Select")) {
+            if (editMenuOption.equals("Select") || editMenuOption.equals("Shift") || editMenuOption.equals("Bezier")) {
                 editMenuItem = new CheckMenuItem(editMenuOption);
             } else {
                 editMenuItem = new MenuItem(editMenuOption);
@@ -69,26 +74,95 @@ public class MainApplication extends Application {
         return menuBar;
     }
 
+    // Adding or selecting control points for the splines
     public void pointManipulation() {
         mainScene.setOnMouseClicked(event -> {
-            System.out.println(event.getScreenX() + " " + event.getSceneY());
-            if (!this.isSelected) {
-                if (event.getSceneY() > verticalBoundaries[0] && event.getSceneY() < verticalBoundaries[1]) {
+            if (!this.isSelected && !this.isShifted && !this.isBezier) {
+                if (event.getSceneY() > verticalBoundaries[0] && event.getSceneY() - Constants.CURSOR_SHIFT < verticalBoundaries[1]) {
                     drawPoint(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT);
                     mainController.addPoint(new Point(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT));
                 }
-            } else {
+            } else if ((this.isSelected || this.isBezier) && !this.isShifted) {
                 for (Circle point : controlPointsUI) {
                     // Check which point is intersecting with the mouse cursor
                     if (Math.pow(event.getSceneX() - point.getCenterX(), 2) +
                             Math.pow(event.getSceneY() - Constants.CURSOR_SHIFT - point.getCenterY(), 2) <= Math.pow(Constants.CONTROL_POINTS_RADIUS, 2)) {
-                        point.setFill(Constants.CONTROL_POINTS_SELECTED_COLOR);
-                        selectedControlPointsUI.add(point);
+                        if (point.getFill() == Constants.CONTROL_POINTS_COLOR) {
+                            if (this.isBezier) {
+                                point.setFill(Constants.CONTROL_POINTS_BEZIER_COLOR);
+                                selectedBezierSegments.add(point);
+                            } else {
+                                point.setFill(Constants.CONTROL_POINTS_SELECTED_COLOR);
+                                selectedControlPointsUI.add(point);
+                            }
+                        } else {
+                            point.setFill(Constants.CONTROL_POINTS_COLOR);
+                            if (this.isBezier) {
+                                selectedBezierSegments.add(point);
+                            } else {
+                                selectedControlPointsUI.remove(point);
+                            }
+                        }
                         break;
                     }
                 }
             }
         });
+
+        mainScene.setOnMousePressed(event -> {
+            if (!this.isSelected && this.isShifted) {
+                for (Circle point : controlPointsUI) {
+                    // Check if there is a point intersecting with the mouse cursor
+                    if (Math.pow(event.getSceneX() - point.getCenterX(), 2) +
+                            Math.pow(event.getSceneY() - Constants.CURSOR_SHIFT - point.getCenterY(), 2) <= Math.pow(Constants.CONTROL_POINTS_RADIUS, 2)) {
+                        this.pointDragUI = new Circle(point.getCenterX(), point.getCenterY(),
+                                Constants.CONTROL_POINTS_RADIUS, Constants.POINT_DRAG_COLOR);
+                        this.canvas.getChildren().add(this.pointDragUI);
+                        break;
+                    }
+                }
+                // Search the point in the list of control points that is selected
+                for (Point point : mainController.getListOfPoints()) {
+                    System.out.println(pointDragUI.getCenterX() + " " + point.getX() + " " + pointDragUI.getCenterY() + " " + point.getY());
+                    if (Math.abs(pointDragUI.getCenterX() - point.getX()) <= Constants.COORDINATE_FLOAT_DIFF &&
+                            Math.abs(pointDragUI.getCenterY() - point.getY()) <= Constants.COORDINATE_FLOAT_DIFF) {
+                        this.pointDrag = point;
+                        break;
+                    }
+                }
+            }
+        });
+
+        mainScene.setOnMouseDragged(event -> {
+            if (!this.isSelected && this.isShifted) {
+                if (this.pointDragUI != null) {
+                    this.pointDragUI.setCenterX(event.getSceneX());
+                    this.pointDragUI.setCenterY(event.getSceneY() - Constants.CURSOR_SHIFT);
+                }
+            }
+        });
+
+        mainScene.setOnMouseReleased(event -> {
+            if (!this.isSelected && this.isShifted) {
+                if (this.pointDragUI != null) {
+                    this.canvas.getChildren().remove(this.pointDragUI);
+                    this.pointDrag.setX(this.pointDragUI.getCenterX());
+                    this.pointDrag.setY(this.pointDragUI.getCenterY());
+                    this.pointDragUI = null;
+                    this.pointDrag = null;
+                    // Update the trajectory
+                    this.generatedTrajectories = mainController.interpolate(mainController.getCurrSplineType());
+                    visualizeTrajectory();
+                }
+            }
+        });
+    }
+
+    private void solveBezierSegment(int numControlPoints) {
+        System.out.println(numControlPoints);
+        for (Circle circle : selectedBezierSegments) {
+            System.out.println(circle.getCenterX() + " " + circle.getCenterY());
+        }
     }
 
     private void deselectPoints() {
@@ -109,6 +183,7 @@ public class MainApplication extends Application {
                 }
             }
 
+            // Clear list of control points
             selectedControlPointsUI.clear();
             // Update the trajectories
             this.generatedTrajectories = mainController.interpolate(mainController.getCurrSplineType());
@@ -163,8 +238,7 @@ public class MainApplication extends Application {
                     System.out.println(menuItem.getId());
                     switch(menuItem.getId()) {
                         case "Select":
-                            CheckMenuItem selectMode = (CheckMenuItem) menuItem;
-                            this.isSelected = selectMode.isSelected();
+                            this.isSelected = !this.isSelected;
                             if (!this.isSelected) {
                                 deselectPoints();
                             }
@@ -172,13 +246,21 @@ public class MainApplication extends Application {
                         case "Delete":
                             deletePoints();
                             break;
+                        case "Shift":
+                            this.isShifted = !this.isShifted;
+                            break;
                         case "Cubic Splines":
                             generatedTrajectories = mainController.interpolate(0);
                             visualizeTrajectory();
                             break;
                         case "Bezier":
-                            generatedTrajectories = mainController.interpolate(1);
-                            visualizeTrajectory();
+                            this.isBezier = !this.isBezier;
+                            break;
+                        case "Bezier - 1 control point":
+                            solveBezierSegment(1);
+                            break;
+                        case "Bezier - 2 control points":
+                            solveBezierSegment(2);
                             break;
                         default:
                             break;

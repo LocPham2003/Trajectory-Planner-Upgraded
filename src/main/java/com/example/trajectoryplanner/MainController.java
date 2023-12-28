@@ -8,7 +8,7 @@ import java.util.Comparator;
 public class MainController {
     private int splineType = 0;
     private double[] verticalBoundaries;
-    ArrayList<Point> listOfPoints = new ArrayList<>();
+    private ArrayList<Point> listOfPoints = new ArrayList<>();
 
     public MainController(double[] verticalBoundaries) {
         this.verticalBoundaries = verticalBoundaries;
