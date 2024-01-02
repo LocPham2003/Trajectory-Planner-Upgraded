@@ -13,6 +13,8 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
 
 import java.util.ArrayList;
 
@@ -30,11 +32,11 @@ public class MainApplication extends Application {
 
     MainController mainController;
     ArrayList<Trajectory> generatedTrajectories = new ArrayList<>();
-    ArrayList<Circle> controlPointsUI = new ArrayList<>();
+    ArrayList<Circle> controlPointsUI = new ArrayList<>(); // The UI element of the control points
     ArrayList<Circle> selectedControlPointsUI = new ArrayList<>();
-    ArrayList<Circle> selectedBezierSegments = new ArrayList<>();
+    ArrayList<Circle> selectedBezierSegmentsUI = new ArrayList<>();
     Circle pointDragUI; // The UI element of the point that is being dragged.
-    Point pointDrag; // The mathematical object of the point that is being dragged.
+    Point pointDrag; // The reference to mathematical object of the point that is being dragged.
     public MenuBar createMenuBar() {
         // TO-DO: Generate this dynamically by reading from JSON.
         MenuBar menuBar = new MenuBar();
@@ -83,24 +85,24 @@ public class MainApplication extends Application {
                     mainController.addPoint(new Point(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT));
                 }
             } else if ((this.isSelected || this.isBezier) && !this.isShifted) {
-                for (Circle point : controlPointsUI) {
+                for (Circle circle : controlPointsUI) {
                     // Check which point is intersecting with the mouse cursor
-                    if (Math.pow(event.getSceneX() - point.getCenterX(), 2) +
-                            Math.pow(event.getSceneY() - Constants.CURSOR_SHIFT - point.getCenterY(), 2) <= Math.pow(Constants.CONTROL_POINTS_RADIUS, 2)) {
-                        if (point.getFill() == Constants.CONTROL_POINTS_COLOR) {
+                    if (Utilities.withinCircle(new Point(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT), circle)) {
+                        if (circle.getFill() == Constants.CONTROL_POINTS_COLOR) {
                             if (this.isBezier) {
-                                point.setFill(Constants.CONTROL_POINTS_BEZIER_COLOR);
-                                selectedBezierSegments.add(point);
+                                if (checkSelectedBezierSegments(circle)) {
+                                    circle.setFill(Constants.CONTROL_POINTS_BEZIER_COLOR);
+                                }
                             } else {
-                                point.setFill(Constants.CONTROL_POINTS_SELECTED_COLOR);
-                                selectedControlPointsUI.add(point);
+                                circle.setFill(Constants.CONTROL_POINTS_SELECTED_COLOR);
+                                selectedControlPointsUI.add(circle);
                             }
                         } else {
-                            point.setFill(Constants.CONTROL_POINTS_COLOR);
+                            circle.setFill(Constants.CONTROL_POINTS_COLOR);
                             if (this.isBezier) {
-                                selectedBezierSegments.add(point);
+                                selectedBezierSegmentsUI.remove(circle);
                             } else {
-                                selectedControlPointsUI.remove(point);
+                                selectedControlPointsUI.remove(circle);
                             }
                         }
                         break;
@@ -110,12 +112,11 @@ public class MainApplication extends Application {
         });
 
         mainScene.setOnMousePressed(event -> {
-            if (!this.isSelected && this.isShifted) {
-                for (Circle point : controlPointsUI) {
+            if (!this.isSelected && !this.isBezier && this.isShifted) {
+                for (Circle circle : controlPointsUI) {
                     // Check if there is a point intersecting with the mouse cursor
-                    if (Math.pow(event.getSceneX() - point.getCenterX(), 2) +
-                            Math.pow(event.getSceneY() - Constants.CURSOR_SHIFT - point.getCenterY(), 2) <= Math.pow(Constants.CONTROL_POINTS_RADIUS, 2)) {
-                        this.pointDragUI = new Circle(point.getCenterX(), point.getCenterY(),
+                    if (Utilities.withinCircle(new Point(event.getSceneX(), event.getSceneY() - Constants.CURSOR_SHIFT), circle)) {
+                        this.pointDragUI = new Circle(circle.getCenterX(), circle.getCenterY(),
                                 Constants.CONTROL_POINTS_RADIUS, Constants.POINT_DRAG_COLOR);
                         this.canvas.getChildren().add(this.pointDragUI);
                         break;
@@ -123,9 +124,7 @@ public class MainApplication extends Application {
                 }
                 // Search the point in the list of control points that is selected
                 for (Point point : mainController.getListOfPoints()) {
-                    System.out.println(pointDragUI.getCenterX() + " " + point.getX() + " " + pointDragUI.getCenterY() + " " + point.getY());
-                    if (Math.abs(pointDragUI.getCenterX() - point.getX()) <= Constants.COORDINATE_FLOAT_DIFF &&
-                            Math.abs(pointDragUI.getCenterY() - point.getY()) <= Constants.COORDINATE_FLOAT_DIFF) {
+                    if (Utilities.comparePointsWithCircle(point, pointDragUI)) {
                         this.pointDrag = point;
                         break;
                     }
@@ -151,17 +150,70 @@ public class MainApplication extends Application {
                     this.pointDragUI = null;
                     this.pointDrag = null;
                     // Update the trajectory
-                    this.generatedTrajectories = mainController.interpolate(mainController.getCurrSplineType());
+                    this.generatedTrajectories = mainController.interpolateCubic();
                     visualizeTrajectory();
                 }
             }
         });
     }
 
+    private boolean checkSelectedBezierSegments(Circle circle) {
+        Alert bezierGenAlert;
+        if (selectedBezierSegmentsUI.size() == 2) {
+            bezierGenAlert = new Alert(AlertType.ERROR);
+            bezierGenAlert.setContentText("No more than 2 points can be selected for bezier interpolation");
+            bezierGenAlert.show();
+            return false;
+        }
+        else if (selectedBezierSegmentsUI.isEmpty()) {
+            selectedBezierSegmentsUI.add(circle);
+            return true;
+        } else {
+            ArrayList<Point> controlPoints = mainController.getListOfPoints();
+            int firstBezierPointIndex = 0;
+            for (int i = 0; i < controlPoints.size(); i++) {
+                if (Utilities.comparePointsWithCircle(controlPoints.get(i), circle)) {
+                    // Check the next and previous point
+                    firstBezierPointIndex = i;
+                    break;
+                }
+            }
+
+            boolean isNextPoint = false;
+            boolean isPrevPoint = false;
+
+            if (firstBezierPointIndex == controlPoints.size() - 1) {
+                isPrevPoint = Utilities.comparePointsWithCircle(controlPoints.get(firstBezierPointIndex - 1), circle);
+            } else if (firstBezierPointIndex == 0) {
+                isNextPoint = Utilities.comparePointsWithCircle(controlPoints.get(firstBezierPointIndex + 1), circle);
+            } else {
+                isPrevPoint = Utilities.comparePointsWithCircle(controlPoints.get(firstBezierPointIndex - 1), circle);
+                isNextPoint = Utilities.comparePointsWithCircle(controlPoints.get(firstBezierPointIndex + 1), circle);
+            }
+
+            if (isNextPoint || isPrevPoint) {
+                return true;
+            } else {
+                bezierGenAlert = new Alert(AlertType.ERROR);
+                bezierGenAlert.setContentText("Two points to be controlled by Bezier must be adjacent!");
+                bezierGenAlert.show();
+                return false;
+            }
+        }
+
+    }
+
     private void solveBezierSegment(int numControlPoints) {
-        System.out.println(numControlPoints);
-        for (Circle circle : selectedBezierSegments) {
-            System.out.println(circle.getCenterX() + " " + circle.getCenterY());
+        if (selectedBezierSegmentsUI.size() != 2) {
+            Alert alert = new Alert(AlertType.ERROR);
+            alert.setContentText("You need to select 2 control points to be interpolated with Bezier first!");
+            alert.show();
+        } else {
+            ArrayList<Point> selectedBezierPoints = new ArrayList<>();
+            for (Circle circle : selectedBezierSegmentsUI) {
+                selectedBezierPoints.add(new Point(circle.getCenterX(), circle.getCenterY()));
+            }
+            mainController.interpolateBezier(selectedBezierPoints, numControlPoints);
         }
     }
 
@@ -175,18 +227,17 @@ public class MainApplication extends Application {
         if (!selectedControlPointsUI.isEmpty()) {
             for (Circle pointUI : selectedControlPointsUI) {
                 for (Point point : mainController.getListOfPoints()) {
-                    if (Math.abs(pointUI.getCenterX() - point.getX()) <= Constants.COORDINATE_FLOAT_DIFF &&
-                            Math.abs(pointUI.getCenterY() - point.getY()) <= Constants.COORDINATE_FLOAT_DIFF) {
+                    if (Utilities.comparePointsWithCircle(point, pointUI)) {
                         mainController.removePoint(point);
                         break;
                     }
                 }
             }
 
-            // Clear list of control points
+            // Clear list of selected control points
             selectedControlPointsUI.clear();
             // Update the trajectories
-            this.generatedTrajectories = mainController.interpolate(mainController.getCurrSplineType());
+            this.generatedTrajectories = mainController.interpolateCubic();
             visualizeTrajectory();
         }
     }
@@ -211,16 +262,16 @@ public class MainApplication extends Application {
             Point[] boundaryPoints = new Point[]{listOfPoints.get(0), listOfPoints.get(listOfPoints.size() - 1)};
             int currIndex = 0;
             // Draw the boundary point
-            drawPoint(boundaryPoints[0].getX(), generatedTrajectories.get(currIndex).getFuncOutput(boundaryPoints[0].getX()));
-            drawPoint(boundaryPoints[1].getX(), generatedTrajectories.get(generatedTrajectories.size() - 1).getFuncOutput(boundaryPoints[1].getX()));
+            drawPoint(boundaryPoints[0].getX(), generatedTrajectories.get(currIndex).getFuncOutputCubic(boundaryPoints[0].getX()));
+            drawPoint(boundaryPoints[1].getX(), generatedTrajectories.get(generatedTrajectories.size() - 1).getFuncOutputCubic(boundaryPoints[1].getX()));
 
             for (double i = boundaryPoints[0].getX(); i <= boundaryPoints[1].getX() - 0.1; i += 0.01) {
                 if (Math.abs(i - listOfPoints.get(currIndex + 1).getX()) <= 0.00000001) {
                     currIndex++;
-                    drawPoint(i, generatedTrajectories.get(currIndex).getFuncOutput(i));
+                    drawPoint(i, generatedTrajectories.get(currIndex).getFuncOutputCubic(i));
                 }
-                canvas.getChildren().add(new Line(i, generatedTrajectories.get(currIndex).getFuncOutput(i),
-                        i + 0.1, generatedTrajectories.get(currIndex).getFuncOutput(i + 0.1)));
+                canvas.getChildren().add(new Line(i, generatedTrajectories.get(currIndex).getFuncOutputCubic(i),
+                        i + 0.1, generatedTrajectories.get(currIndex).getFuncOutputCubic(i + 0.1)));
             }
         }
     }
@@ -250,7 +301,7 @@ public class MainApplication extends Application {
                             this.isShifted = !this.isShifted;
                             break;
                         case "Cubic Splines":
-                            generatedTrajectories = mainController.interpolate(0);
+                            generatedTrajectories = mainController.interpolateCubic();
                             visualizeTrajectory();
                             break;
                         case "Bezier":

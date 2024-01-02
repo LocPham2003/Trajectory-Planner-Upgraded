@@ -1,14 +1,11 @@
 package com.example.trajectoryplanner;
 
-import javafx.geometry.Bounds;
-
 import java.util.ArrayList;
 import java.util.Comparator;
-
 public class MainController {
-    private int splineType = 0;
     private double[] verticalBoundaries;
     private ArrayList<Point> listOfPoints = new ArrayList<>();
+    private ArrayList<Trajectory> trajectories;
 
     public MainController(double[] verticalBoundaries) {
         this.verticalBoundaries = verticalBoundaries;
@@ -23,22 +20,18 @@ public class MainController {
         this.listOfPoints.remove(point);
     }
 
-    public int getCurrSplineType() {
-        return this.splineType;
-    }
-
     public ArrayList<Point> getListOfPoints() {
         return this.listOfPoints;
     }
 
-    public ArrayList<Trajectory> interpolate(int splineType) {
-        this.splineType = splineType;
+    public ArrayList<Trajectory> interpolateCubic() {
         TrajectoryGenerator trajectoryGenerator = new TrajectoryGenerator(listOfPoints, verticalBoundaries);
-        if (splineType == 0) {
-            System.out.println("Solving cubic spline");
-            return trajectoryGenerator.generateCubicSplineTrajectories();
-        } else {
-            return trajectoryGenerator.generateBezierTrajectories();
-        }
+        trajectories = trajectoryGenerator.generateCubicSplineTrajectories();
+        return this.trajectories;
+    }
+
+    public ArrayList<Trajectory> interpolateBezier(ArrayList<Point> bezierControlPoints, int numControlPoints) {
+        TrajectoryGenerator trajectoryGenerator = new TrajectoryGenerator(listOfPoints, verticalBoundaries);
+        return trajectoryGenerator.generateBezierTrajectories(bezierControlPoints, numControlPoints);
     }
 }

@@ -1,8 +1,6 @@
 package com.example.trajectoryplanner;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 
 public class TrajectoryGenerator {
     private final ArrayList<Point> listOfPoints;
@@ -185,7 +183,7 @@ public class TrajectoryGenerator {
                     this.coefMat[i * 4][this.rightHandSideIndex],
                     this.coefMat[i * 4 + 1][this.rightHandSideIndex],
                     this.coefMat[i * 4 + 2][this.rightHandSideIndex],
-                    this.coefMat[i * 4 + 3][this.rightHandSideIndex]));
+                    this.coefMat[i * 4 + 3][this.rightHandSideIndex], true));
         }
 
         // Point index to find out which 2 points the current trajectory is connecting.
@@ -200,10 +198,10 @@ public class TrajectoryGenerator {
             if (Math.sqrt(delta) > 0) {
                 double firstSol = (-coefDerivative[1] - Math.sqrt(delta)) / (2 * coefDerivative[2]);
                 double secondSol = (-coefDerivative[1] + Math.sqrt(delta)) / (2 * coefDerivative[2]);
-                if (trajectory.getFuncOutput(firstSol) < verticalBoundaries[0] ||
-                        trajectory.getFuncOutput(secondSol) < verticalBoundaries[0] ||
-                        trajectory.getFuncOutput(firstSol) > verticalBoundaries[1] ||
-                        trajectory.getFuncOutput(secondSol) > verticalBoundaries[1]) {
+                if (trajectory.getFuncOutputCubic(firstSol) < verticalBoundaries[0] ||
+                        trajectory.getFuncOutputCubic(secondSol) < verticalBoundaries[0] ||
+                        trajectory.getFuncOutputCubic(firstSol) > verticalBoundaries[1] ||
+                        trajectory.getFuncOutputCubic(secondSol) > verticalBoundaries[1]) {
 
                     Point currPoint = this.listOfPoints.get(pointIndex);
                     Point nextPoint = this.listOfPoints.get(pointIndex + 1);
@@ -220,7 +218,25 @@ public class TrajectoryGenerator {
     }
 
     // Allow control of the trajectory curvature with a bezier curve control points  (reference: https://javascript.info/bezier-curve)
-    public ArrayList<Trajectory> generateBezierTrajectories() {
+
+    /**
+     *
+     * @param splineControlPoints the control points of the spline whose segment will be interpolated with a bezier-curve
+     * @param numControlPoints the number of control points for the bezier-curve
+     * @return list of updated trajectories, with the trajectories that were interpolated with a bezier-curve
+     */
+    public ArrayList<Trajectory> generateBezierTrajectories(ArrayList<Point> splineControlPoints, int numControlPoints) {
+        ArrayList<Point> bezierControlPoints = new ArrayList<>();
+
+        double midPointX = Math.min(splineControlPoints.get(0).getX(), splineControlPoints.get(1).getX()) +
+                Math.abs(splineControlPoints.get(0).getX() - splineControlPoints.get(1).getX()) / 2.0;
+
+        bezierControlPoints.add(new Point(midPointX, Math.max(splineControlPoints.get(0).getY(), splineControlPoints.get(1).getY())));
+        bezierControlPoints.add(new Point(midPointX, Math.min(splineControlPoints.get(0).getY(), splineControlPoints.get(1).getY())));
+
+        // TODO: Update the trajectories who will be interpolated with bezier
+        // Do stuff
+
         return this.trajectories;
     }
 
